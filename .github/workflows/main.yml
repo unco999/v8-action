@@ -1,92 +1,92 @@
-# ================================================= ==
-#说明：使用 GitHub Actions 构建 v8 引擎
-#作者：t1an5t
-# ================================================= ==
+#===================================================
+# Description: Build v8 enginer using GitHub Actions
+# Author: t1an5t
+#===================================================
 
 
-名称：构建 v8
+name: BUILD v8
 
-上：
-  推：
-    分支机构: [ master ]
-  #观看：
-  #   类型：开始
+on:
+  push:
+    branches: [ master ]
+  # watch:
+  #   types: started
 
-环境：
-  PATCH_FLAG：错误
-  提交：0
-  DEPOT_UPLOAD：错误
-  SRC_UPLOAD :真
-  BINARY_UPLOAD：错误
+env:
+  PATCH_FLAG: false
+  COMMIT: 0
+  DEPOT_UPLOAD: false
+  SRC_UPLOAD: true
+  BINARY_UPLOAD: false
 
-#工作流运行由一个或多个可以顺序或并行运行的作业组成
-职位：
-  构建：
-    #作业将运行的运行器类型
-    运行：Windows
-    如果：github.event.repository.owner.id == github.event.sender.id 	
+# A workflow run is made up of one or more jobs that can run sequentially or in parallel
+jobs:
+  build:
+    # The type of runner that the job will run on
+    runs-on: windows
+    if: github.event.repository.owner.id == github.event.sender.id 	
     
-    步骤：
-    -名称：结帐
-      使用：动作/结帐@master
+    steps:
+    - name: Checkout
+      uses: actions/checkout@master
       
-    #初始化ubuntu1804环境
-    -名称：初始化环境
-      运行：|
-        sudo apt-get 更新
+    # init ubuntu1804 environment
+    - name: init env
+      run: |
+        sudo apt-get update
         sudo apt-get -y install pkg-config git subversion curl wget build-essential python xz-utils zip p7zip-full
     
-    #获取 depot_tools
-    -名称：depot_tools
-      运行：|
-        git 克隆 https://chromium.googlesource.com/chromium/tools/depot_tools.git
+    # get depot_tools
+    - name: depot_tools
+      run: |
+        git clone https://chromium.googlesource.com/chromium/tools/depot_tools.git
         echo export PATH=\"\$PATH:`pwd`/depot_tools/\" >> ~/.bash_profile
     
-    #获取 v8 源代码
-    -名称：获取 v8
-      运行：|
-        来源 ~/.bash_profile
-        获取 v8
-        CD v8
+    # fetch v8 source code
+    - name: fetch v8
+      run: |
+        source ~/.bash_profile
+        fetch v8
+        cd v8
     
-    #补丁源码
-    -名称：补丁 v8
-      如果：env.PATCH_FLAG == 'true' && !cancelled()
-      运行：|
-        CD v8
+    # patch source code
+    - name: patch v8
+      if: env.PATCH_FLAG == 'true' && !cancelled()
+      run: |
+        cd v8
         git reset --hard $COMMIT
-        光盘..
+        cd ..
         
-    -名称：构建 v8
-      运行：|
-        来源 ~/.bash_profile
-        gclient同步-f
+    - name: build v8
+      run: |
+        source ~/.bash_profile
+        gclient sync -f
     
-    #压缩这个文件
-    -名称：zip depot_tools
-      如果：env.DEPOT_UPLOAD == 'true' && !cancelled()
-      运行：|
+    # compress this file
+    - name: zip depot_tools
+      if: env.DEPOT_UPLOAD == 'true' && !cancelled()
+      run: |
         zip -q -r depot_tools.zip depot_tools
         
-    # 7zip v8 源码
-    -名称：7zip v8_src
-      运行：|
+    # 7zip v8 src
+    - name: 7zip v8_src
+      run: |
         zip -q -r v8.zip v8
-        7z v8.7z ./v8.zip -v2048m
+        7z a v8.7z ./v8.zip -v2048m
     
-    #上传 depot_tools.zip 到 cowtransfer
-    -名称：上传 depot_tools
-      如果：env.DEPOT_UPLOAD == 'true' && !cancelled()
-      运行：|
-        curl -fsSL git.io/文件传输 | 嘘
+    # upload depot_tools.zip to cowtransfer
+    - name: upload depot_tools
+      if: env.DEPOT_UPLOAD == 'true' && !cancelled()
+      run: |
+        curl -fsSL git.io/file-transfer | sh
         ./transfer cow --block 2621440 -s -p 64 --no-progress depot_tools.zip 2>&1 | tee cowtransfer.log
         echo "::warning file=cowtransfer.com::$(cat cowtransfer.log | grep https)"
    
-    #上传 v8.zip 到 cowtransfer
-    -名称：上传 v8_src
-      如果：env.SRC_UPLOAD == 'true' && !cancelled()
-      运行：|
-        curl -fsSL git.io/文件传输 | 嘘
+    # upload v8.zip to cowtransfer
+    - name: upload v8_src
+      if: env.SRC_UPLOAD == 'true' && !cancelled()
+      run: |
+        curl -fsSL git.io/file-transfer | sh
         ./transfer cow --block 2621440 -s -p 64 --no-progress v8.7z.001 2>&1 | tee cowtransfer.log
         echo "::warning file=cowtransfer.com::$(cat cowtransfer.log | grep https)"
         ./transfer cow --block 2621440 -s -p 64 --no-progress v8.7z.002 2>&1 | tee cowtransfer.log
